@@ -1,0 +1,223 @@
+﻿<div class="div1 col-md-6">
+    <div class="form-group">
+        Select Provider
+        <select asp="provider_id" id="provider_id" class="form-control">
+        </select>
+    </div>
+    <div class="form-group">
+        Select Subscription
+        <select asp="subscription_id" id="subscription_id" class="form-control">
+        </select>
+    </div>
+    <br />
+    <fieldset>
+        <legend>Applicant details</legend>
+
+        <div class="form-group">
+            <input type="text" id="registration_id" class="form-control" hidden name="registration_id"><br />
+
+            <label for="applicant_name">Name:</label><br />
+            <input type="text" id="applicant_name" class="form-control" name="applicant_name"><br />
+
+            <label for="email_id">Email:</label><br />
+            <input type="text" id="email_id" class="form-control" name="email_id"><br />
+
+            <label for="mobile_no">Mobile:</label><br />
+            <input type="text" id="mobile_no" class="form-control" name="mobile_no"><br />
+        </div>
+        <div class="form-group">
+            <label for="dob">Date of Birth:</label><br />
+            <input type="date" id="dob" class="form-control" name="dob"><br />
+
+            <label for="gender">Gender:</label><br />
+            <input type="radio" id="gender" name="gender" value="Male">
+            <label>Male</label>
+            <input type="radio" id="gender" name="gender" value="Female">
+            <label>Female</label>
+
+            <br />
+            <label for="image_path">Upload Address Proof:</label><br />
+            <input type="file" id="image_path" class="form-control" name="fileUP">
+        </div>
+        <div class="form-group">
+            <input type="button" id="saveupdate" value="Submit" class="btn btn-dark" />
+        </div>
+    </fieldset>
+</div>
+
+<h2>Registration Details</h2>
+
+<table class="table"  id="View">
+    <thead>
+        <tr>
+            <th>
+                Sl.No
+            </th>
+            <th>
+                Name
+            </th>
+            <th>
+                Email
+            </th>
+            <th>
+                Mobile No
+            </th>
+            <th>
+                Documents
+            </th>
+            <th>
+                Provider Name
+            </th>
+            <th>
+                Subscribed
+            </th>
+            <th>
+                Action
+            </th>
+        </tr>
+    </thead>
+    <tbody>
+    </tbody>
+</table>
+
+
+<script src="~/lib/jquery/dist/jquery.min.js"></script>
+<script src="~/Validation/Validation.js"></script>
+<script src="~/Validation/DropDownValidation.js"></script>
+
+<script>
+    $(window).on("load", function () {
+        GetAllProvider();
+        View();
+    });
+
+    function GetAllProvider() {
+        $.getJSON("/Home/GetAllProvider", function (data) {
+            data = JSON.parse(data);
+            var P = "<option>Select One</option>";
+            $.each(data, function (i, P1) {
+                P += "<option value=" + P1.provider_id + ">" + P1.provider_name + "</option>";
+            });
+            $("#provider_id").html(P);
+        });
+    }
+
+    $(document).ready(function () {
+        $("#provider_id").change(function () {
+            var provider_id = $(this).val();
+            $("#subscription_id").empty();
+            $.getJSON("/Home/GetAllSubscription", { provider_id: provider_id }, function (data) {
+                data = JSON.parse(data);
+                var S = "<option>Select One</option>";
+                $.each(data, function (i, S1) {
+                    S += "<option value=" + S1.subscription_id + ">" + S1.subscription_name + "</option>";
+                });
+                $("#subscription_id").html(S);
+            });
+        });
+    })
+
+    $("#saveupdate").click(function () {
+        var files = $("#image_path").prop("files");
+        var url = "Home/UploadImage";
+        FormData = new FormData();
+        FormData.append("MyUploader", files[0]);
+
+        jQuery.ajax({
+            type: 'POST',
+            url: url,
+            data: FormData,
+            cache: false,
+            contentType: false,
+            processData: false,
+            beforeSend: function (xhr) {
+                xhr.setRequestHeader("XSRF-TOKEN",
+                    $('input:hidden[name="__RequestVerificationToken"]').val());
+            },
+            success: function (repo) {
+                if (repo.status == "success") {
+                }
+            },
+            error: function () {
+                alert("Error occurs");
+            }
+        });
+        if (dropDownValidation('provider_id') == true && dropDownValidation('subscription_id') == true && txtChkValidation('applicant_name') == true && txtChkValidation('mobile_no') == true && txtChkValidation('email_id') == true) {
+            //debugger
+            var SR = {
+                registration_id: $("#registration_id").val(),
+                applicant_name: $("#applicant_name").val(),
+                email_id: $("#email_id").val(),
+                mobile_no: $("#mobile_no").val(),
+                gender: $("#gender:checked").val(),
+                dob: $("#dob").val(),
+                image_path: $("#image_path").val(),
+                provider_id: $("#provider_id").val(),
+                subscription_id: $("#subscription_id").val(),
+            };
+
+            $.post("/Home/CreateOrUpdate", SR, function () {
+                if (SR.registration_id == 0) {
+                    alert("Data Inserted")
+                    location.reload();
+                }
+                else {
+                    alert("Data Updated")
+                    location.reload();
+                }
+                GetAllSchool();
+            });
+        }
+        else {
+            alert("Please Check your Data.");
+            dropDownValidation('provider_id');
+            dropDownValidation('subscription_id');
+            txtChkValidation('applicant_name');
+            txtChkValidation('mobile_no');
+            txtChkValidation('email_id');
+        }
+    });
+
+    function Edit(registration_id) {
+        $.getJSON("/Home/Edit", { registration_id: registration_id }, function (data) {
+            prod = JSON.parse(data);
+            $("#registration_id").val(prod[0].registration_id);
+            $("#provider_id").val(prod[0].provider_id);
+            $("#subscription_id").empty();
+            $.getJSON("Home/GetAllSubscription", { provider_id: prod[0].provider_id }, function (data) {
+                data = JSON.parse(data);
+                $.each(data, function (i, subscription_id) {
+                    $("#subscription_id").append(
+                        `<option value=` + subscription_id.subscription_id + `>` + subscription_id.subscription_name + `</option>`
+                    );
+                    $("#subscription_id").val(prod[0].subscription_id);
+                });
+            });
+            $("#applicant_name").val(prod[0].applicant_name);
+            $("#email_id").val(prod[0].email_id);
+            $("#mobile_no").val(prod[0].mobile_no);
+            $("#dob").val(prod[0].dob);
+            ("END");
+            $('input:radio').each(function () {
+                if ($(this).val() == prod[0].gender) {
+                    $(this).attr('checked', 'checked');
+                }
+            });
+            $('#image_path').attr('src', prod[0].image_path);
+        });
+    }
+
+    function View() {
+        $("#View tbody tr").remove();
+
+        $.getJSON("/Home/ViewAll", function (data) {
+            data = JSON.parse(data);
+            $.each(data, function (i, SR) {
+                $("#View tbody").append(
+                    `<tr><td>` + SR.registration_id + `</td><td>` + SR.applicant_name + `</td><td>` + SR.email_id + `</td><td>` + SR.mobile_no + `</td><td>` + SR.image_path + `</td><td>` + SR.provider_name + `</td><td>` + SR.subscription_name + `</td><td><button class="btn btn-warning" onclick="Edit(` + SR.registration_id + `)">Edit</button></td></tr>>`
+                );
+            });
+        });
+    }
+
+</script>
